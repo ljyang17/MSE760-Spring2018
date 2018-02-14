@@ -77,6 +77,20 @@ double distanceSquare(double x1, double y1, double z1){
   return pow(x1, 2) + pow(y1, 2) + pow(z1, 2);
 }
 
+// not applying PBC
+void noPBC(int xdim, int ydim, int zdim, int currentDim, double a_red,
+            double* currentArray, double* currentArrayij){
+
+    int numOfAtoms = 4 * xdim * ydim * zdim;
+
+    for (int i = 0; i < numOfAtoms - 1; i++) {
+      for (int j = i + 1; j < numOfAtoms; j++) {
+              currentArrayij[j + i * numOfAtoms] = currentArrayij[j + i * numOfAtoms];
+            }
+    } // end of for loop
+}
+
+// applying PBC
 void addPBC(int xdim, int ydim, int zdim, int currentDim, double a_red,
             double* currentArray, double* currentArrayij){
 
@@ -97,7 +111,7 @@ void addPBC(int xdim, int ydim, int zdim, int currentDim, double a_red,
 }
 
 // calculate LJ energy
-double LennardJones(int xdim, int ydim, int zdim, double a_red,
+double LennardJones(int xdim, int ydim, int zdim, double a_red, bool PBC,
                    double* arrayX, double* arrayY, double* arrayZ,
                    double* arrayXij, double* arrayYij, double* arrayZij){
 
@@ -105,10 +119,19 @@ double LennardJones(int xdim, int ydim, int zdim, double a_red,
   double distSquare = 0.0;
   double LJenergy = 0.0;
 
+  if (PBC)
+  {
   addPBC(xdim, ydim, zdim, xdim, a_red, arrayX, arrayXij);
   addPBC(xdim, ydim, zdim, ydim, a_red, arrayY, arrayYij);
   addPBC(xdim, ydim, zdim, zdim, a_red, arrayZ, arrayZij);
+  }
 
+  else
+  {
+  noPBC(xdim, ydim, zdim, xdim, a_red, arrayX, arrayXij);
+  noPBC(xdim, ydim, zdim, ydim, a_red, arrayY, arrayYij);
+  noPBC(xdim, ydim, zdim, zdim, a_red, arrayZ, arrayZij);
+  }
   // for (int i = 0; i < numOfAtoms - 1; i++) {
   //   for (int j = 0; j < numOfAtoms; j++) {
   //     int offset = j + i * numOfAtoms;
@@ -174,6 +197,7 @@ int main(int argc, char const *argv[]) {
   int xdim = atoi(argv[1]);
   int ydim = atoi(argv[2]);
   int zdim = atoi(argv[3]);
+  bool PBC = atoi(argv[4]);
   int numberOfAtoms = xdim * ydim * zdim;
   int sumOfAtoms = (4 * numberOfAtoms) * (4 * numberOfAtoms - 1);
 
@@ -223,7 +247,7 @@ int main(int argc, char const *argv[]) {
   mergeArray(xdim, ydim, zdim, arrayX1, arrayY1, arrayZ1, arrayX2, arrayY2, arrayZ2,
              arrayX3, arrayY3, arrayZ3, arrayX4, arrayY4, arrayZ4, arrayX, arrayY, arrayZ);
   // calculate LJ energy
-  double LJenergy = LennardJones(xdim, ydim, zdim, a_red,
+  double LJenergy = LennardJones(xdim, ydim, zdim, a_red, PBC,
                                  arrayX, arrayY, arrayZ, arrayXij, arrayYij, arrayZij);
   printf("LJ energy in Reduced unit is %.10f\n", LJenergy);
   printf("LJ energy in SI unit is %.10f eV\n", eps * LJenergy);
