@@ -85,7 +85,7 @@ void noPBC(int xdim, int ydim, int zdim, int currentDim, double a_red,
 
     for (int i = 0; i < numOfAtoms - 1; i++) {
       for (int j = i + 1; j < numOfAtoms; j++) {
-              currentArrayij[j + i * numOfAtoms] = currentArrayij[j + i * numOfAtoms];
+              currentArrayij[j + i * numOfAtoms] = currentArray[i] - currentArray[j];
             }
     } // end of for loop
 }
