@@ -111,7 +111,7 @@ void addPBC(int xdim, int ydim, int zdim, int currentDim, double a_red,
 }
 
 // calculate LJ energy
-double LennardJones(int xdim, int ydim, int zdim, double a_red, bool PBC,
+double LennardJones(int xdim, int ydim, int zdim, double a_red, int PBC,
                    double* arrayX, double* arrayY, double* arrayZ,
                    double* arrayXij, double* arrayYij, double* arrayZij){
 
@@ -197,7 +197,7 @@ int main(int argc, char const *argv[]) {
   int xdim = atoi(argv[1]);
   int ydim = atoi(argv[2]);
   int zdim = atoi(argv[3]);
-  bool PBC = atoi(argv[4]);
+  int PBC = atoi(argv[4]);
   int numberOfAtoms = xdim * ydim * zdim;
   int sumOfAtoms = (4 * numberOfAtoms) * (4 * numberOfAtoms - 1);
 
