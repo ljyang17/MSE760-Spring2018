@@ -1,0 +1,38 @@
+LAMMPS (11 Aug 2017)
+Lattice spacing in x,y,z = 5.7 5.7 5.7
+Created orthogonal box = (0 0 0) to (28.5 28.5 28.5)
+  1 by 1 by 1 MPI processor grid
+Created 500 atoms
+Neighbor list info ...
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 10.5
+  ghost atom cutoff = 10.5
+  binsize = 5.25, bins = 6 6 6
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/cut, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+LAMMPS (11 Aug 2017)
+LAMMPS (11 Aug 2017)
+LAMMPS (11 Aug 2017)
+Total wall time: 0:00:00
+Total wall time: 0:00:00
+Total wall time: 0:00:00
+Setting up Verlet run ...
+  Unit style    : metal
+  Current step  : 0
+  Time step     : 0.05
+Per MPI rank memory allocation (min/avg/max) = 4.187 | 4.187 | 4.187 Mbytes
+Step KinEng PotEng TotEng Temp 
+       0    16.125203   -36.291337   -20.166134          250 
+     100    8.2596132   -28.021704   -19.762091    128.05441 
+     200    8.7024187   -27.986207   -19.283789    134.91952 
+     300    9.1335533   -27.602937   -18.469384    141.60369 
+     400    9.5871165   -27.210375   -17.623258    148.63559 
+     500    10.591037   -26.797543   -16.206506    164.20005 
+     600    12.863591   -25.574737   -12.711146    199.43301 
+ERROR: Lost atoms: original 500 current 2 (../thermo.cpp:442)
+Last command: run           50000

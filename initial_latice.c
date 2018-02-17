@@ -33,12 +33,12 @@ void outToFile(FILE* fp, int xdim, int ydim, int zdim,
       for (int k = 0; k < zdim; k++) {
         int offset = k + zdim * j + ydim * zdim * i;
 
-        // fprintf(fp, "cell ID: %d, atom %d, x=%.6e, ", offset, atomID, sig * arrayX[offset]);
-        // fprintf(fp, "y=%.6e, ", sig * arrayY[offset]);
-        // fprintf(fp, "z=%.6e\n", sig * arrayZ[offset]);
-        fprintf(fp, "%d %d %.6e ", offset, atomID, sig * arrayX[offset]);
-        fprintf(fp, "%.6e ", sig * arrayY[offset]);
-        fprintf(fp, "%.6e\n", sig * arrayZ[offset]);
+        fprintf(fp, "cell ID: %d, atom %d, x=%.6e, ", offset, atomID, sig * arrayX[offset]);
+        fprintf(fp, "y=%.6e, ", sig * arrayY[offset]);
+        fprintf(fp, "z=%.6e\n", sig * arrayZ[offset]);
+        // fprintf(fp, "%d %d %.6e ", offset, atomID, sig * arrayX[offset]);
+        // fprintf(fp, "%.6e ", sig * arrayY[offset]);
+        // fprintf(fp, "%.6e\n", sig * arrayZ[offset]);
       }
     }
   } // end of for loop
