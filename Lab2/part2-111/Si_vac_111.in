@@ -1,0 +1,48 @@
+units           metal                 # Angstrom, eV, ps, bar
+boundary        p p p                 # Periodic boundaries in all dimensions.
+atom_style      atomic                # Pair potentials.
+
+#------------------------------------------------------------------
+#  Define simulation box.
+#------------------------------------------------------------------
+
+#lattice diamond 5.43
+#region my_box block 0 1 0 1 0 1 
+#create_box      1 my_box
+#create_atoms     1 box
+read_data traj111_vac
+mass 1 28.0855
+
+
+
+
+#------------------------------------------------------------------
+#  Define interatomic potential.
+#------------------------------------------------------------------
+
+pair_style      tersoff
+pair_coeff      * * Si.tersoff Si 
+neigh_modify    every 1 delay 0 check no
+
+
+#------------------------------------------------------------------
+#  How to write the trajectory.
+#------------------------------------------------------------------
+dump            dump_name all custom 100 traj.lammpstrj id type x y z 
+dump_modify     dump_name sort id 
+
+#------------------------------------------------------------------
+#  How to write thermodynamic information.
+#------------------------------------------------------------------
+thermo 100
+thermo_style    custom step temp press etotal pe enthalpy
+thermo_modify   flush yes 
+
+
+fix 1 all box/relax iso 0.0 vmax 0.001
+minimize 1.0e-20 1.0e-8 10000 100000
+min_style cg
+
+#------------------------------------------------------------------
+#  Define statistical ensemble.
+#------------------------------------------------------------------

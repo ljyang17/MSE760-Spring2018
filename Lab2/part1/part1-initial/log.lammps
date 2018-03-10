@@ -1,0 +1,112 @@
+LAMMPS (11 Aug 2017)
+units           metal                 # Angstrom, eV, ps, bar
+boundary        p p p                 # Periodic boundaries in all dimensions.
+atom_style      atomic                # Pair potentials.
+
+#------------------------------------------------------------------
+#  Define simulation box.
+#------------------------------------------------------------------
+
+#initial lattice diamond 5.973
+#region my_box block 0 1 0 1 0 1
+#create_box      1 my_box
+#create_atoms     1 box
+read_data traj
+  orthogonal box = (0 0 0) to (5.962 5.962 5.962)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  8 atoms
+replicate 4 4 4
+  orthogonal box = (0 0 0) to (23.848 23.848 23.848)
+  1 by 1 by 1 MPI processor grid
+  512 atoms
+mass 1 28.0855
+
+
+
+
+#------------------------------------------------------------------
+#  Define interatomic potential.
+#------------------------------------------------------------------
+
+pair_style      tersoff
+pair_coeff      * * Si.tersoff Si
+Reading potential file Si.tersoff with DATE: 2007-10-25
+neigh_modify    every 1 delay 0 check no
+
+
+#------------------------------------------------------------------
+#  How to write the trajectory.
+#------------------------------------------------------------------
+dump            dump_name all custom 100 traj.lammpstrj id type x y z
+dump_modify     dump_name sort id
+
+
+#------------------------------------------------------------------
+#  How to write thermodynamic information.
+#------------------------------------------------------------------
+thermo 100
+thermo_style    custom step temp press etotal pe enthalpy
+thermo_modify   flush yes
+
+fix 1 all box/relax iso 0.0 vmax 0.001
+minimize 1.0e-20 1.0e-8 10000 100000
+WARNING: Using 'neigh_modify every 1 delay 0 check yes' setting during minimization (../min.cpp:168)
+Neighbor list info ...
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 5.2
+  ghost atom cutoff = 5.2
+  binsize = 2.6, bins = 10 10 10
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair tersoff, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 5.152 | 5.152 | 5.152 Mbytes
+Step Temp Press TotEng PotEng Enthalpy 
+       0            0   -141575.55   -2177.9615   -2177.9615   -3376.4498 
+     100            0   -5.2908887   -2370.7533   -2370.7533   -2370.7871 
+     200            0 0.0085002496    -2370.771    -2370.771    -2370.771 
+     254            0  0.007903747    -2370.771    -2370.771    -2370.771 
+Loop time of 2.04324 on 1 procs for 254 steps with 512 atoms
+
+99.7% CPU use with 1 MPI tasks x no OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+        -2177.96150575      -2370.7710277      -2370.7710277
+  Force two-norm initial, final = 3595.47 0.000358085
+  Force max component initial, final = 3595.46 0.000166576
+  Final line search alpha, max atom move = 1 0.000166576
+  Iterations, force evaluations = 254 420
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.0139     | 2.0139     | 2.0139     |   0.0 | 98.57
+Neigh   | 0.002461   | 0.002461   | 0.002461   |   0.0 |  0.12
+Comm    | 0.0030425  | 0.0030425  | 0.0030425  |   0.0 |  0.15
+Output  | 0.0018921  | 0.0018921  | 0.0018921  |   0.0 |  0.09
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.02192    |            |       |  1.07
+
+Nlocal:    512 ave 512 max 512 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    1017 ave 1017 max 1017 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    0 ave 0 max 0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  14336 ave 14336 max 14336 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 14336
+Ave neighs/atom = 28
+Neighbor list builds = 3
+Dangerous builds not checked
+min_style cg
+
+
+Total wall time: 0:00:02
