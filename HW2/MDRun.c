@@ -290,7 +290,7 @@ void LJEnergyForce(int xdim, int ydim, int zdim, double a_red, int PBC, int step
       // printf("%.10f\n", pow((1.0 / distSquare), 6) - pow((1.0 / distSquare), 3));
     }
   } // end of for loop
-  LJenergy[step] = LJ / numOfAtoms;
+  LJenergy[step] = LJ;
 } // end of function
 
 // velocity Verlet algorithm
@@ -352,9 +352,13 @@ void velVerletIntegration(int xdim, int ydim, int zdim, double dT, double a_red,
       kinetic += 1 / 2.0 * (velArrayMX[i] * velArrayMX[i] + velArrayMY[i] * velArrayMY[i] + velArrayMZ[i] * velArrayMZ[i]);
       // printf("kinetic %f ", kinetic);
     }
-    kinEnergy[step] =  kinetic / numOfAtoms;
+    kinEnergy[step] =  kinetic;
     // printf("kinetic %f ", kinEnergy[step]);
     totEnergy[step] = kinEnergy[step] + LJenergy[step];
+ }
+ void calcRadDis(){
+
+
  }
 
 // start main
