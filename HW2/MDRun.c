@@ -5,13 +5,17 @@
 #include <stdbool.h>
 #include <time.h>
 
-#define OUTPOS true
-#define OUTFORCE true
+#define OUTPOS false
+#define OUTFORCE false
 #define OUTENERGY true
+#define OUTGR true
 
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 #define SIGMA 3.4e-10
 #define EPSILON 1.04e-2
-#define MASS 6.6e-26
+#define MASS 6.63e-26
 #define KB 8.617e-5
 #define EPSILONS 1.6663e-21
 
@@ -84,6 +88,13 @@ void outToFileEnergy(FILE* fp, int stepTotal,
         // fprintf(fp, "%d %d %.6e ", offset, atomID, SIGMA * arrayX[offset]);
         // fprintf(fp, "%.6e ", SIGMA * arrayY[offset]);
         // fprintf(fp, "%.6e\n", SIGMA * arrayZ[offset]);
+  } // end of for loop
+} // end of function
+
+// output force to text file
+void outToFileGr(FILE* fp, double numOfBins, double* gr) {
+    for (int i = 0; i < numOfBins; i++) {
+        fprintf(fp, "%d %.6e\n", i, gr[i]);
   } // end of for loop
 } // end of function
 
@@ -205,6 +216,9 @@ void calcAveTemp(int xdim, int ydim, int zdim,
     double Vz = v0 * arrayVz[i];
     double VSquare = Vx * Vx + Vy * Vy + Vz * Vz;
     sumTemp += VSquare;
+    arrayVx[i] = Vx;
+    arrayVy[i] = Vy;
+    arrayVz[i] = Vz;
     }
     sumTemp /= 3 * numOfAtoms;
     if (fabs(sumTemp - givenTemp_red) > 1e-3){
@@ -302,16 +316,7 @@ void velVerletIntegration(int xdim, int ydim, int zdim, double dT, double a_red,
                           double* velArrayMX, double* velArrayMY, double* velArrayMZ){
   int numOfAtoms = 4 * xdim * ydim * zdim;
   double kinetic = 0.0;
-  // double LJenergy[1];
-  // LJenergy[0] = 0.0;
-  LJEnergyForce(xdim, ydim, zdim, a_red, PBC, step,
-                posArrayMX, posArrayMY, posArrayMZ,
-                arrayXij, arrayYij, arrayZij,
-                forceXij, forceYij, forceZij, LJenergy);
-                // for (int i = 0; i < numOfAtoms; i++) {
-                //     printf("%f ", forceXij[i]);
-                //    printf("\n");
-                // } // end of for loop
+
   for (int i = 0; i < numOfAtoms; i++) {
      // need to fix index issue--fixed
      // update half step velocity in place
@@ -356,9 +361,31 @@ void velVerletIntegration(int xdim, int ydim, int zdim, double dT, double a_red,
     // printf("kinetic %f ", kinEnergy[step]);
     totEnergy[step] = kinEnergy[step] + LJenergy[step];
  }
- void calcRadDis(){
+ // calculate radial distribution function
+ void calcRadDis(int xdim, int ydim, int zdim, double a_red, int PBC, double cutoff, double dr,
+                double* posArrayMX, double* posArrayMY, double* posArrayMZ,
+                 double* arrayXij, double* arrayYij, double* arrayZij, int* H){
+   // check BC for updated position, update arrayXij, arrayYij, arrayZij
+   if (PBC){
+     addPBC(xdim, ydim, zdim, xdim, a_red, posArrayMX, arrayXij);
+     addPBC(xdim, ydim, zdim, ydim, a_red, posArrayMY, arrayYij);
+     addPBC(xdim, ydim, zdim, zdim, a_red, posArrayMZ, arrayZij);
+   }
+   int bin;
+   int numOfAtoms = 4 * xdim * ydim * zdim;
 
-
+   for (int i = 0; i < numOfAtoms - 1; i++) {
+     for (int j = i + 1; j < numOfAtoms; j++) {
+       double Xij = arrayXij[j + i * numOfAtoms];
+       double Yij = arrayYij[j + i * numOfAtoms];
+       double Zij = arrayZij[j + i * numOfAtoms];
+       double distSquare = distanceSquare(Xij, Yij, Zij);
+       if (distSquare < cutoff * cutoff) {
+         bin = (int)(sqrt(distSquare) / dr);
+         H[bin] += 2;
+       }
+   }
+ }
  }
 
 // start main
@@ -382,6 +409,7 @@ int main(int argc, char const *argv[]) {
   // time step
   // double dT = 0.001;
   double giventimeTotal = 2.2e-11;
+  double dr = 0.1;
 
   // define reduced-unit constants
   double a_red = a / SIGMA;
@@ -389,11 +417,11 @@ int main(int argc, char const *argv[]) {
   double givenTemp_red = KB * givenTemp / EPSILON;
   // double real_time = sqrt((1.0 * SIGMA * SIGMA) / EPSILON) * dT;
   double giventimeTotal_red = giventimeTotal * sqrt(EPSILONS / (m * SIGMA * SIGMA));
-  printf("%f\n", giventimeTotal_red);
+  // printf("%f\n", giventimeTotal_red);
   int stepTotal = (int) ceil(giventimeTotal_red / dT);
   // printf("Total simulation time steps: %d\n", stepTotal);
   // printf("%f\n", giventimeTotal_red * 1000 / (dT*1000));
-  // int stepTotal = 100;
+  // int stepTotal = 50;
 
   // define initial offset of Argon
   double b1x = 0.0;
@@ -417,6 +445,11 @@ int main(int argc, char const *argv[]) {
   int numberOfCells = xdim * ydim * zdim;
   int numOfAtoms = 4 * numberOfCells;
   int sumOfAtoms = (4 * numberOfCells) * (4 * numberOfCells);
+  double cutoff = zdim * a_red / 2.0;
+  double totalVolume = numberOfCells * pow(a_red, 3);
+  double totalMass = numOfAtoms * m_red;
+  double rho = totalMass / totalVolume;
+  int numOfBins = (int)(cutoff / dr) + 1;
   // int sumOfAtomsForce = (4 * numberOfCells) * (4 * numberOfCells);
 
   // allocate memory for storage of position
@@ -461,6 +494,10 @@ int main(int argc, char const *argv[]) {
   double *kinEnergy = (double *)calloc(stepTotal , sizeof(double));
   double *totEnergy = (double *)calloc(stepTotal , sizeof(double));
 
+  // allocate memory for bins
+  int* H = (int*)calloc(numOfBins,sizeof(int));
+  double* gr = (double*)calloc(numOfBins,sizeof(double));
+
   // call a function to create lattice points for Argon
   createLattice(xdim, ydim, zdim, b1x, b1y, b1z, arrayX1, arrayY1, arrayZ1, a_red);
   createLattice(xdim, ydim, zdim, b2x, b2y, b2z, arrayX2, arrayY2, arrayZ2, a_red);
@@ -503,9 +540,12 @@ int main(int argc, char const *argv[]) {
 
   randomVelGenerate(xdim, ydim, zdim, velArrayMX, velArrayMY, velArrayMZ);
   calcAveTemp(xdim, ydim, zdim, givenTemp_red, velArrayMX, velArrayMY, velArrayMZ);
-
+  for (int i = 0; i < numOfAtoms; i++) {
+     kinEnergy[0] += 1 / 2.0 * (velArrayMX[i] * velArrayMX[i] + velArrayMY[i] * velArrayMY[i] + velArrayMZ[i] * velArrayMZ[i]);
+   }
+  totEnergy[0] = LJEnergy[0] + kinEnergy[0];
   // dynamic problems
-  for (int step = 0; step < stepTotal; step++) {
+  for (int step = 1; step < stepTotal; step++) {
     velVerletIntegration(xdim, ydim, zdim, dT, a_red, PBC, step,
                          LJEnergy, kinEnergy, totEnergy,
                          arrayXij, arrayYij, arrayZij,
@@ -521,6 +561,43 @@ int main(int argc, char const *argv[]) {
      outToFileEnergy(fp, stepTotal, kinEnergy, LJEnergy, totEnergy);
      fclose(fp);
     }
+    calcRadDis(xdim, ydim, zdim, a_red, PBC, cutoff, dr,
+               posArrayMX, posArrayMY, posArrayMZ,
+               arrayXij, arrayYij, arrayZij, H);
+
+    for (int i = 0; i < numOfBins; i++) {
+      // double r = dr * (i + 0.5);
+      double binVolume = ((i + 1) * (i + 1) * (i + 1) - i * i * i) * dr * dr * dr;
+      double norm = (4.0 / 3.0) * M_PI * binVolume * rho;
+      gr[i] = H[i] / norm;
+      // printf("%f\n", gr[i]);
+      // printf("norm %f\n", norm);
+    }
+    if (OUTGR){
+     remove("outputgr.txt");
+     FILE *fp = fopen("outputgr.txt", "w");
+
+     outToFileGr(fp, numOfBins, gr);
+     fclose(fp);
+    }
+    // printf("%f %f\n", totalMass, totalVolume);
+    // givenTemp_red /= (250.0 / 250.0);
+    // double sumTemp = 0.0;
+    // for (int i = 0; i < numOfAtoms; i++) {
+    //   double Vx = velArrayMX[i];
+    //   double Vy = velArrayMY[i];
+    //   double Vz = velArrayMZ[i];
+    //   double VSquare = Vx * Vx + Vy * Vy + Vz * Vz;
+    //   sumTemp += VSquare;
+    //   }
+    //   sumTemp /= 3 * numOfAtoms;
+    //   if (fabs(sumTemp - givenTemp_red) > 1e-3){
+    //     printf("Error! Caculated average temperature is not the same as given temperature\n");
+    //     printf("Caculated average temperature is %f, given temperature is %f\n", sumTemp, givenTemp_red);
+    //   }
+    //   printf("Caculated average temperature in reduced unit is %f\n", sumTemp);
+    //   printf("Caculated average temperature in SI unit is %f (K)\n", sumTemp * EPSILON / KB);
+
 
   //===========================wrap up===========================================
   // free memory
@@ -559,6 +636,9 @@ int main(int argc, char const *argv[]) {
   free(LJEnergy);
   free(kinEnergy);
   free(totEnergy);
+
+  free(H);
+  free(gr);
 
   return 0;
 }
