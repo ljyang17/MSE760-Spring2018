@@ -6,9 +6,9 @@
 #include <time.h>
 
 #define OUTPOS false
-#define OUTFORCE false
+#define OUTFORCE true
 #define OUTENERGY true
-#define OUTGR true
+#define OUTGR false
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
@@ -67,9 +67,9 @@ void outToFileForce(FILE* fp, int xdim, int ydim, int zdim,
         // fprintf(fp, "The force between atom %d and atom %d is: Fx=%.6e, ", i, j, EPSILON / SIGMA * arrayX[offset]);
         // fprintf(fp, "Fy=%.6e, ", EPSILON / SIGMA * arrayY[offset]);
         // fprintf(fp, "Fz=%.6e\n", EPSILON / SIGMA * arrayZ[offset]);
-        fprintf(fp, "%d %.6e ", i, EPSILON / SIGMA * arrayX[i]);
-        fprintf(fp, "%.6e ", EPSILON / SIGMA * arrayY[i]);
-        fprintf(fp, "%.6e\n", EPSILON / SIGMA * arrayZ[i]);
+        fprintf(fp, "%d %.6e ", i, EPSILONS / SIGMA * arrayX[i]);
+        fprintf(fp, "%.6e ", EPSILONS / SIGMA * arrayY[i]);
+        fprintf(fp, "%.6e\n", EPSILONS / SIGMA * arrayZ[i]);
         // fprintf(fp, "%d %d %.6e ", offset, atomID, SIGMA * arrayX[offset]);
         // fprintf(fp, "%.6e ", SIGMA * arrayY[offset]);
         // fprintf(fp, "%.6e\n", SIGMA * arrayZ[offset]);
@@ -271,10 +271,11 @@ void LJEnergyForce(int xdim, int ydim, int zdim, double a_red, int PBC, int step
           distSquare = distanceSquare(Xij, Yij, Zij);
 
           if (distSquare != 0.0){
-            forceX += 48.0 * Xij * (pow((1.0 / distSquare), 7) - 1 / 2 * pow((1.0 / distSquare), 4));
-            forceY += 48.0 * Yij * (pow((1.0 / distSquare), 7) - 1 / 2 * pow((1.0 / distSquare), 4));
-            forceZ += 48.0 * Zij * (pow((1.0 / distSquare), 7) - 1 / 2 * pow((1.0 / distSquare), 4));
+            forceX += 48.0 * Xij * (pow((1.0 / distSquare), 7) - 1.0 / 2.0 * pow((1.0 / distSquare), 4));
+            forceY += 48.0 * Yij * (pow((1.0 / distSquare), 7) - 1.0 / 2.0 * pow((1.0 / distSquare), 4));
+            forceZ += 48.0 * Zij * (pow((1.0 / distSquare), 7) - 1.0 / 2.0 * pow((1.0 / distSquare), 4));
           }
+
       // if (distSquare<0.5){
       //   printf("%d %d %.6f\n", i, j, distSquare);
       //     printf("%.10f\n", 4.0 * (pow((1.0 / distSquare), 6) - pow((1.0 / distSquare), 3)));}
@@ -324,10 +325,10 @@ void velVerletIntegration(int xdim, int ydim, int zdim, double dT, double a_red,
     //  printf("second before %f \n", forceXij[i] * dT);
     //  printf("second before %f \n", dT);
     //  printf("second before %f \n", forceXij[i]);
-     velArrayMX[i] = velArrayMX[i] + 1 / 2.0 * forceXij[i] * dT;
+     velArrayMX[i] = velArrayMX[i] + 1.0 / 2.0 * forceXij[i] * dT;
     //  printf("vx after %f \n", velArrayMX[i]);
-     velArrayMY[i] = velArrayMY[i] + 1 / 2.0 * forceYij[i] * dT;
-     velArrayMZ[i] = velArrayMZ[i] + 1 / 2.0 * forceZij[i] * dT;
+     velArrayMY[i] = velArrayMY[i] + 1.0 / 2.0 * forceYij[i] * dT;
+     velArrayMZ[i] = velArrayMZ[i] + 1.0 / 2.0 * forceZij[i] * dT;
      // update position in place
      posArrayMX[i] = posArrayMX[i] + velArrayMX[i] * dT;
      posArrayMY[i] = posArrayMY[i] + velArrayMY[i] * dT;
@@ -350,9 +351,9 @@ void velVerletIntegration(int xdim, int ydim, int zdim, double dT, double a_red,
                 //  } // end of for loop
    // update full step velocity in place
    for (int i = 0; i < numOfAtoms; i++) {
-      velArrayMX[i] = velArrayMX[i] + 1 / 2.0 * forceXij[i] * dT;
-      velArrayMY[i] = velArrayMY[i] + 1 / 2.0 * forceYij[i] * dT;
-      velArrayMZ[i] = velArrayMZ[i] + 1 / 2.0 * forceZij[i] * dT;
+      velArrayMX[i] = velArrayMX[i] + 1.0 / 2.0 * forceXij[i] * dT;
+      velArrayMY[i] = velArrayMY[i] + 1.0 / 2.0 * forceYij[i] * dT;
+      velArrayMZ[i] = velArrayMZ[i] + 1.0 / 2.0 * forceZij[i] * dT;
       // printf("vx after %f \n", velArrayMX[i]);
       kinetic += 1 / 2.0 * (velArrayMX[i] * velArrayMX[i] + velArrayMY[i] * velArrayMY[i] + velArrayMZ[i] * velArrayMZ[i]);
       // printf("kinetic %f ", kinetic);
@@ -541,7 +542,7 @@ int main(int argc, char const *argv[]) {
   randomVelGenerate(xdim, ydim, zdim, velArrayMX, velArrayMY, velArrayMZ);
   calcAveTemp(xdim, ydim, zdim, givenTemp_red, velArrayMX, velArrayMY, velArrayMZ);
   for (int i = 0; i < numOfAtoms; i++) {
-     kinEnergy[0] += 1 / 2.0 * (velArrayMX[i] * velArrayMX[i] + velArrayMY[i] * velArrayMY[i] + velArrayMZ[i] * velArrayMZ[i]);
+     kinEnergy[0] += 1.0 / 2.0 * (velArrayMX[i] * velArrayMX[i] + velArrayMY[i] * velArrayMY[i] + velArrayMZ[i] * velArrayMZ[i]);
    }
   totEnergy[0] = LJEnergy[0] + kinEnergy[0];
   // dynamic problems
