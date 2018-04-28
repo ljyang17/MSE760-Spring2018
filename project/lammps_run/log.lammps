@@ -1,0 +1,7 @@
+LAMMPS (11 Aug 2017)
+# Reference: M. Orsi, Comparative assessment of the ELBA coarse-grained
+# model for water, Molecular Physics (2014), 112, 1566-1576
+
+units real
+atom_style full
+read_data dataSingleSPC.lammps

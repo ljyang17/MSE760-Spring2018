@@ -1,0 +1,37 @@
+# file "ethanol.lt" 
+#
+#       H1    H4 
+#       |     |
+# H3 -- C1 -- C2 -- OH -- HO
+#       |     |
+#       H2    H5
+
+import "oplsaa.lt"
+
+Ethanol inherits OPLSAA {
+
+  write("Data Atoms") {
+    $atom:C1 $mol:. @atom:77  0.0   0.995   0.329  -0.000
+    $atom:C2 $mol:. @atom:96  0.0  -0.340  -0.404   0.000
+    $atom:OH $mol:. @atom:93  0.0  -1.394   0.538  -0.000
+    $atom:HO $mol:. @atom:94  0.0  -2.235   0.073   0.000
+    $atom:H1 $mol:. @atom:82  0.0   1.844  -0.392   0.000
+    $atom:H2 $mol:. @atom:82  0.0   1.096   0.975  -0.902
+    $atom:H3 $mol:. @atom:82  0.0   1.096   0.976   0.901
+    $atom:H4 $mol:. @atom:82  0.0  -0.456  -1.038   0.907
+    $atom:H5 $mol:. @atom:82  0.0  -0.457  -1.039  -0.907
+  }
+
+  write("Data Bonds") {
+    $bond:CH1 @bond:77-82 $atom:C1 $atom:H1
+    $bond:CH2 @bond:77-82 $atom:C1 $atom:H2
+    $bond:CH3 @bond:77-82 $atom:C1 $atom:H3
+    $bond:CH4 @bond:96-82 $atom:C2 $atom:H4
+    $bond:CH5 @bond:96-82 $atom:C2 $atom:H5
+    $bond:CC  @bond:77-96 $atom:C1 $atom:C2
+    $bond:CO  @bond:93-96 $atom:OH $atom:C2
+    $bond:OH  @bond:93-94 $atom:OH $atom:HO
+  }
+
+
+} # end of definition of Ethanol molecule type

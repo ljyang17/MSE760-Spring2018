@@ -1,0 +1,48 @@
+
+# NVT of 5*5*5*4 500  Ar atoms
+
+#basic settings
+units         metal
+atom_style    atomic
+neighbor      0.5 bin
+neigh_modify  every 1 delay 0 check yes
+
+#create initial crystal structure
+boundary      p p p               #Set the style of boundaries for the global simulation box in each dimension
+lattice       fcc 5.7 orient x 1 0 0 orient y 0 1 0 orient z 0 0 1  #Define a lattice for use by other commands
+region        unitcell block 0 1 0 1 0 1 units lattice   #Defines a geometric region of space
+create_box    1 unitcell          #This command creates a simulation box based on the specified region
+create_atoms  1 box               #This command creates atoms (or molecules) on a lattice
+mass          1 39.948            #Set the mass for all atoms of one or more atom types
+replicate     5 5 5               #Replicate the current simulation one or more times in each dimension
+
+#define forcefield
+pair_style    lj/cut 10
+pair_coeff    * * 0.0104 3.4
+
+#assign initial temperature
+velocity      all create 250.0 482748
+
+
+
+#outputting thermo information and atoms positions
+thermo        100
+#dump          atoms all custom 200 Ar.xyz id type x y z fx fy fz
+#dump          atoms all xyz 200 Ar.xyz
+dump       atoms all custom 1000 traj.lammpstrj id type x y z
+
+#choose ensemble and timestep to equilibrate the system
+timestep      0.001
+fix	2 all nvt temp 250 250 1.0
+thermo_style  custom  step ke pe etotal press temp 
+run           30000
+
+
+compute       1 all msd
+fix             9 all vector 100 c_1[4]
+variable        fitslope equal slope(f_9)/6/(100*dt)
+thermo_style  custom  step ke pe etotal press temp c_1[4] v_fitslope
+
+
+run           100000
+

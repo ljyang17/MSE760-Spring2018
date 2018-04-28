@@ -1,0 +1,226 @@
+LAMMPS (11 Aug 2017)
+# Reference: M. Orsi, Comparative assessment of the ELBA coarse-grained
+# model for water, Molecular Physics (2014), 112, 1566-1576
+
+units real
+atom_style full
+read_data dataSingleSPC.lammps
+  orthogonal box = (0 0 0) to (3.1 3.1 3.1)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  3 atoms
+  scanning bonds ...
+  2 = max bonds/atom
+  scanning angles ...
+  1 = max angles/atom
+  reading bonds ...
+  2 bonds
+  reading angles ...
+  1 angles
+  2 = max # of 1-2 neighbors
+  1 = max # of 1-3 neighbors
+  1 = max # of 1-4 neighbors
+  2 = max # of special neighbors
+include forcefieldSPC.lmp
+# Berendsen et al, in "Intermolecular forces", p. 331 (1981)
+# Charges and geometry are specified in the "data." file.
+
+mass 1 1.00794 # H
+mass 2 15.9994 # O
+
+pair_style lj/cut/coul/long 10.0
+pair_modify tail yes
+kspace_style pppm 1.0e-5
+
+pair_coeff 1 1 0.00000 0.000
+pair_coeff 1 2 0.00000 0.000
+pair_coeff 2 2 0.15535 3.166
+
+bond_style harmonic
+bond_coeff 1 0.0 1.0
+
+angle_style harmonic
+angle_coeff 1 0.0 109.47
+
+replicate 20 20 20
+  orthogonal box = (0 0 0) to (62 62 62)
+  1 by 1 by 1 MPI processor grid
+  24000 atoms
+  16000 bonds
+  8000 angles
+  2 = max # of 1-2 neighbors
+  1 = max # of 1-3 neighbors
+  1 = max # of 1-4 neighbors
+  2 = max # of special neighbors
+
+# Nf is Nfrequency, calculate averages every this many timesteps
+variable Nrun equal 2000
+variable Nf equal ${Nrun}/10
+variable Nf equal 2000/10
+variable Ne equal 10
+variable Nr equal ${Nf}/${Ne}
+variable Nr equal 200/${Ne}
+variable Nr equal 200/10
+variable Ndump equal ${Nrun}/20
+variable Ndump equal 2000/20
+variable Nr_rdf equal 0.5*${Nrun}/${Ne}
+variable Nr_rdf equal 0.5*2000/${Ne}
+variable Nr_rdf equal 0.5*2000/10
+
+variable watMoleMass equal 18.0153 # /(g/mol)
+variable nAvog equal 6.0221415e23 # Avogadro's number
+variable watMoleculeMass equal (${watMoleMass}/${nAvog}) # /(g/molecule)
+variable watMoleculeMass equal (18.0153/${nAvog}) 
+variable watMoleculeMass equal (18.0153/6.0221415e+23) 
+variable A3_in_cm3 equal 1e-24 # Angstrom^3 in cm^3
+variable nAtoms equal atoms
+variable nMolecules equal v_nAtoms/3
+
+variable Text equal 298.0
+variable Pext equal 1.0
+
+group hydrogen type 1
+16000 atoms in group hydrogen
+group oxygen type 2
+8000 atoms in group oxygen
+
+velocity all create ${Text} 1234
+velocity all create 298 1234
+
+neighbor 2.0 bin
+neigh_modify every 1 delay 0 check yes
+
+timestep 2.0
+
+fix constrain all shake 1.0e-4 100 0 b 1 a 1
+  0 = # of size 2 clusters
+  0 = # of size 3 clusters
+  0 = # of size 4 clusters
+  8000 = # of frozen angles
+fix integrate all npt temp ${Text} ${Text} 100.0 iso ${Pext} ${Pext} 1000.0
+fix integrate all npt temp 298 ${Text} 100.0 iso ${Pext} ${Pext} 1000.0
+fix integrate all npt temp 298 298 100.0 iso ${Pext} ${Pext} 1000.0
+fix integrate all npt temp 298 298 100.0 iso 1 ${Pext} 1000.0
+fix integrate all npt temp 298 298 100.0 iso 1 1 1000.0
+fix removeMomentum all momentum 1 linear 1 1 1
+
+compute T all temp
+fix TempAve all ave/time ${Ne} ${Nr} ${Nf} c_T
+fix TempAve all ave/time 10 ${Nr} ${Nf} c_T
+fix TempAve all ave/time 10 20 ${Nf} c_T
+fix TempAve all ave/time 10 20 200 c_T
+
+variable P equal press
+fix PressAve all ave/time ${Ne} ${Nr} ${Nf} v_P
+fix PressAve all ave/time 10 ${Nr} ${Nf} v_P
+fix PressAve all ave/time 10 20 ${Nf} v_P
+fix PressAve all ave/time 10 20 200 v_P
+
+compute PE all pe pair kspace
+variable PE_Mol equal c_PE/v_nMolecules
+fix PEAve_Mol all ave/time ${Ne} ${Nr} ${Nf} v_PE_Mol
+fix PEAve_Mol all ave/time 10 ${Nr} ${Nf} v_PE_Mol
+fix PEAve_Mol all ave/time 10 20 ${Nf} v_PE_Mol
+fix PEAve_Mol all ave/time 10 20 200 v_PE_Mol
+
+variable Dens equal v_nMolecules*${watMoleculeMass}/(vol*${A3_in_cm3})
+variable Dens equal v_nMolecules*2.99151057808921e-23/(vol*${A3_in_cm3})
+variable Dens equal v_nMolecules*2.99151057808921e-23/(vol*1e-24)
+fix DensAve all ave/time ${Ne} ${Nr} ${Nf} v_Dens file wat.dens
+fix DensAve all ave/time 10 ${Nr} ${Nf} v_Dens file wat.dens
+fix DensAve all ave/time 10 20 ${Nf} v_Dens file wat.dens
+fix DensAve all ave/time 10 20 200 v_Dens file wat.dens
+
+compute	msd oxygen msd com yes
+fix msd oxygen ave/time 1 1 500 c_msd[4] file wat.msd
+
+# 1000 after rdf means how many keyword/value pairs may be appended
+# compute rdf and fix ave/time is a common combination to output rdf calculation into file
+# here only O-O rdf is considered
+compute rdf all rdf 1000 2 2 # oxygen-oxygen
+fix rdf all ave/time ${Ne} ${Nr_rdf} ${Nrun} c_rdf[*] file wat10.rdf mode vector
+fix rdf all ave/time 10 ${Nr_rdf} ${Nrun} c_rdf[*] file wat10.rdf mode vector
+fix rdf all ave/time 10 100 ${Nrun} c_rdf[*] file wat10.rdf mode vector
+fix rdf all ave/time 10 100 2000 c_rdf[*] file wat10.rdf mode vector
+
+thermo_style custom step temp f_TempAve press f_PressAve f_PEAve_Mol f_DensAve
+thermo_modify flush yes
+thermo ${Nf}
+thermo 200
+
+dump trj all atom ${Ndump} wat.lammpstrj
+dump trj all atom 100 wat.lammpstrj
+
+run ${Nrun}
+run 2000
+PPPM initialization ...
+WARNING: Using 12-bit tables for long-range coulomb (../kspace.cpp:321)
+  G vector (1/distance) = 0.299405
+  grid = 50 50 50
+  stencil order = 5
+  estimated absolute RMS force accuracy = 0.00405255
+  estimated relative force accuracy = 1.22041e-05
+  using double precision FFTs
+  3d grid and FFT values/proc = 185193 125000
+Neighbor list info ...
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 12
+  ghost atom cutoff = 12
+  binsize = 6, bins = 11 11 11
+  2 neighbor lists, perpetual/occasional/extra = 1 1 0
+  (1) pair lj/cut/coul/long, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+  (2) compute rdf, occasional, copy from (1)
+      attributes: half, newton on
+      pair build: copy
+      stencil: none
+      bin: none
+Per MPI rank memory allocation (min/avg/max) = 94.07 | 94.07 | 94.07 Mbytes
+Step Temp f_TempAve Press f_PressAve f_PEAve_Mol f_DensAve 
+       0    447.00931            0    22069.201            0            0            0 
+     200     495.0859    705.01833    1360.9177    3651.3064   -6.1502044   0.96636205 
+     400    335.51351    395.01258   -641.67569     -51.6608   -8.4172436   0.93147554 
+     600    295.88649    306.04128    -391.3768   -610.68735   -9.5299693    0.9421367 
+     800    302.04014    296.52613   -378.95776   -227.36689   -9.8478621   0.95671031 
+    1000    297.41628    297.86449   -158.50593   -133.83699   -9.8719772   0.96414841 
+    1200     294.5175    298.41903   -248.54632   -118.90698   -9.9155784   0.96993826 
+    1400    299.37109    298.02237    78.748811   -44.645821   -9.9350782   0.97602717 
+    1600    300.52212    297.60136    124.78707   -1.3019216   -9.9601963   0.98026419 
+    1800    298.36416    297.83792    23.102704   -3.0822991   -9.9623426   0.98124936 
+    2000    296.11127     297.6727     145.9918    5.9245541   -9.9639363    0.9807342 
+Loop time of 412.612 on 1 procs for 2000 steps with 24000 atoms
+
+Performance: 0.838 ns/day, 28.654 hours/ns, 4.847 timesteps/s
+99.6% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 260.76     | 260.76     | 260.76     |   0.0 | 63.20
+Bond    | 0.00278    | 0.00278    | 0.00278    |   0.0 |  0.00
+Kspace  | 52.934     | 52.934     | 52.934     |   0.0 | 12.83
+Neigh   | 50.346     | 50.346     | 50.346     |   0.0 | 12.20
+Comm    | 0.98394    | 0.98394    | 0.98394    |   0.0 |  0.24
+Output  | 0.31625    | 0.31625    | 0.31625    |   0.0 |  0.08
+Modify  | 46.841     | 46.841     | 46.841     |   0.0 | 11.35
+Other   |            | 0.4272     |            |       |  0.10
+
+Nlocal:    24000 ave 24000 max 24000 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    39678 ave 39678 max 39678 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    8.53364e+06 ave 8.53364e+06 max 8.53364e+06 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 8533636
+Ave neighs/atom = 355.568
+Ave special neighs/atom = 2
+Neighbor list builds = 238
+Dangerous builds = 0
+
+#write_restart restart.wat
+Total wall time: 0:06:53

@@ -8,7 +8,7 @@
 #define OUTPOS false
 #define OUTFORCE true
 #define OUTENERGY true
-#define OUTGR false
+#define OUTGR true
 
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
@@ -76,15 +76,18 @@ void outToFileForce(FILE* fp, int xdim, int ydim, int zdim,
   } // end of for loop
 } // end of function
 // output force to text file
-void outToFileEnergy(FILE* fp, int stepTotal,
+void outToFileEnergy(FILE* fp, int stepTotal, int xdim, int ydim, int zdim,
                     double* arrayX, double* arrayY, double* arrayZ) {
+    double numOfAtoms;
+    numOfAtoms = (double) 4 * xdim * ydim * zdim;
     for (int step = 0; step < stepTotal; step++) {
+
         // fprintf(fp, "The force between atom %d and atom %d is: Fx=%.6e, ", i, j, EPSILON / SIGMA * arrayX[offset]);
         // fprintf(fp, "Fy=%.6e, ", EPSILON / SIGMA * arrayY[offset]);
         // fprintf(fp, "Fz=%.6e\n", EPSILON / SIGMA * arrayZ[offset]);
-        fprintf(fp, "%d %.6e ", step, EPSILON * arrayX[step]);
-        fprintf(fp, "%.6e ", EPSILON * arrayY[step]);
-        fprintf(fp, "%.6e\n", EPSILON * arrayZ[step]);
+        fprintf(fp, "%d %.6e ", step, EPSILON * arrayX[step] / numOfAtoms);
+        fprintf(fp, "%.6e ", EPSILON * arrayY[step] / numOfAtoms);
+        fprintf(fp, "%.6e\n", EPSILON * arrayZ[step] / numOfAtoms);
         // fprintf(fp, "%d %d %.6e ", offset, atomID, SIGMA * arrayX[offset]);
         // fprintf(fp, "%.6e ", SIGMA * arrayY[offset]);
         // fprintf(fp, "%.6e\n", SIGMA * arrayZ[offset]);
@@ -227,6 +230,25 @@ void calcAveTemp(int xdim, int ydim, int zdim,
     }
     printf("Caculated average temperature in reduced unit is %f\n", sumTemp);
     printf("Caculated average temperature in SI unit is %f (K)\n", sumTemp * EPSILON / KB);
+}
+// calculate average temperature
+void calcAveTempStep(FILE* fp, int xdim, int ydim, int zdim,
+                  double givenTemp_red, int step, double* tempArray,
+                  double* arrayVx, double* arrayVy, double* arrayVz){
+  int numOfAtoms = 4 * xdim * ydim * zdim;
+  double sumTemp = 0.0;
+    for (int i = 0; i < numOfAtoms; i++) {
+      double Vx = arrayVx[i];
+      double Vy = arrayVy[i];
+      double Vz = arrayVz[i];
+      double VSquare = Vx * Vx + Vy * Vy + Vz * Vz;
+      sumTemp += VSquare;
+      }
+      sumTemp /= 3 * numOfAtoms;
+      tempArray[step] = sumTemp * EPSILON / KB;
+      fprintf(fp, "%d %.6e\n", step, tempArray[step]);
+      // printf("Caculated average temperature in reduced unit is %f\n", sumTemp);
+      // printf("Caculated average temperature in SI unit is %f (K)\n", sumTemp * EPSILON / KB);
 }
 
 // calculate LJ energy
@@ -405,11 +427,11 @@ int main(int argc, char const *argv[]) {
   double m = 6.63e-26;
 
   // system termperature
-  double givenTemp = 300.0;
+  double givenTemp = 500.0;
 
   // time step
   // double dT = 0.001;
-  double giventimeTotal = 2.2e-11;
+  double giventimeTotal = 2.2e-13;
   double dr = 0.1;
 
   // define reduced-unit constants
@@ -494,6 +516,7 @@ int main(int argc, char const *argv[]) {
   double *LJEnergy = (double *)calloc(stepTotal , sizeof(double));
   double *kinEnergy = (double *)calloc(stepTotal , sizeof(double));
   double *totEnergy = (double *)calloc(stepTotal , sizeof(double));
+  double *tempArray = (double *)calloc(stepTotal , sizeof(double));
 
   // allocate memory for bins
   int* H = (int*)calloc(numOfBins,sizeof(int));
@@ -535,6 +558,25 @@ int main(int argc, char const *argv[]) {
    outToFileForce(fp, xdim, ydim, zdim, forceXij, forceYij, forceZij);
    fclose(fp);
   }
+  calcRadDis(xdim, ydim, zdim, a_red, PBC, cutoff, dr,
+             posArrayMX, posArrayMY, posArrayMZ,
+             arrayXij, arrayYij, arrayZij, H);
+
+  for (int i = 0; i < numOfBins; i++) {
+    // double r = dr * (i + 0.5);
+    double binVolume = ((i + 1) * (i + 1) * (i + 1) - i * i * i) * dr * dr * dr;
+    double norm = (4.0 / 3.0) * M_PI * binVolume * rho;
+    gr[i] = H[i] / norm;
+    // printf("%f\n", gr[i]);
+    // printf("norm %f\n", norm);
+  }
+  if (OUTGR){
+   remove("outputgr.txt");
+   FILE *fp = fopen("outputgr.txt", "w");
+
+   outToFileGr(fp, numOfBins, gr);
+   fclose(fp);
+  }
 
   // printf("LJ energy in Reduced unit is %.10f\n", LJenergy[0]);
   // printf("LJ energy in SI unit is %.10f eV\n", EPSILON * LJenergy[0]);
@@ -546,6 +588,7 @@ int main(int argc, char const *argv[]) {
    }
   totEnergy[0] = LJEnergy[0] + kinEnergy[0];
   // dynamic problems
+  FILE *fp = fopen("temp", "w");
   for (int step = 1; step < stepTotal; step++) {
     velVerletIntegration(xdim, ydim, zdim, dT, a_red, PBC, step,
                          LJEnergy, kinEnergy, totEnergy,
@@ -554,35 +597,38 @@ int main(int argc, char const *argv[]) {
                          posArrayMX, posArrayMY, posArrayMZ,
                          velArrayMX, velArrayMY, velArrayMZ);
     printf("step: %d total energy %.10e (eV)\n", step, totEnergy[step] * EPSILON);
+    calcAveTempStep(fp, xdim, ydim, zdim, givenTemp_red, step, tempArray,
+                    velArrayMX, velArrayMY, velArrayMZ);
   }
+  fclose(fp);
     if (OUTENERGY){
      remove("outputenergy.txt");
      FILE *fp = fopen("outputenergy.txt", "w");
 
-     outToFileEnergy(fp, stepTotal, kinEnergy, LJEnergy, totEnergy);
+     outToFileEnergy(fp, stepTotal, xdim, ydim, zdim, kinEnergy, LJEnergy, totEnergy);
      fclose(fp);
     }
-    calcRadDis(xdim, ydim, zdim, a_red, PBC, cutoff, dr,
-               posArrayMX, posArrayMY, posArrayMZ,
-               arrayXij, arrayYij, arrayZij, H);
-
-    for (int i = 0; i < numOfBins; i++) {
-      // double r = dr * (i + 0.5);
-      double binVolume = ((i + 1) * (i + 1) * (i + 1) - i * i * i) * dr * dr * dr;
-      double norm = (4.0 / 3.0) * M_PI * binVolume * rho;
-      gr[i] = H[i] / norm;
-      // printf("%f\n", gr[i]);
-      // printf("norm %f\n", norm);
-    }
-    if (OUTGR){
-     remove("outputgr.txt");
-     FILE *fp = fopen("outputgr.txt", "w");
-
-     outToFileGr(fp, numOfBins, gr);
-     fclose(fp);
-    }
-    // printf("%f %f\n", totalMass, totalVolume);
-    // givenTemp_red /= (250.0 / 250.0);
+    // calcRadDis(xdim, ydim, zdim, a_red, PBC, cutoff, dr,
+    //            posArrayMX, posArrayMY, posArrayMZ,
+    //            arrayXij, arrayYij, arrayZij, H);
+    //
+    // for (int i = 0; i < numOfBins; i++) {
+    //   // double r = dr * (i + 0.5);
+    //   double binVolume = ((i + 1) * (i + 1) * (i + 1) - i * i * i) * dr * dr * dr;
+    //   double norm = (4.0 / 3.0) * M_PI * binVolume * rho;
+    //   gr[i] = H[i] / norm;
+    //   // printf("%f\n", gr[i]);
+    //   // printf("norm %f\n", norm);
+    // }
+    // if (OUTGR){
+    //  remove("outputgr.txt");
+    //  FILE *fp = fopen("outputgr.txt", "w");
+    //
+    //  outToFileGr(fp, numOfBins, gr);
+    //  fclose(fp);
+    // }
+    // // printf("%f %f\n", totalMass, totalVolume);
+    // // givenTemp_red /= (250.0 / 250.0);
     // double sumTemp = 0.0;
     // for (int i = 0; i < numOfAtoms; i++) {
     //   double Vx = velArrayMX[i];
