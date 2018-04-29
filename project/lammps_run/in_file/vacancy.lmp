@@ -32,20 +32,25 @@ change_box all z final ${zLoNew} ${zHiNew} units box
 # Ne is to use input values every this many timesteps
 # Nr is number of times to use input values for calculating averages
 # Nf is to calculate averages every this many timesteps
-variable Nblock equal 1000
-variable Nrun equal 8.0*${Nblock}
+# The average is over Nrepeat quantities,
+# computed in the preceding portion of the simulation every Nevery timesteps
+# Nrepeat*Nevery can not exceed Nfreq
+variable Nblock equal 200
+variable Nrun equal 20.0*${Nblock}
 variable Ndump equal ${Nrun}/4
 variable Ne equal 10
 variable Nr equal ${Nblock}/${Ne}
-variable Nf equal 1000
+variable Nf equal 200
 variable Dz equal 0.1
 
 variable A_in_m equal 1e-10 # Angstrom in meter
 variable atm_in_Pa equal 101325 # note: 1 Pa = 1 N/m^2
 variable N_in_mN equal 1e3 # Newton in milliNewton
 variable convFac equal ${A_in_m}*${atm_in_Pa}*${N_in_mN}
+variable nAtoms equal atoms
+variable nMolecules equal v_nAtoms/3
 
-variable Text equal 300
+variable Text equal 298
 
 group hydrogen type 1
 group oxygen type 2
@@ -54,6 +59,7 @@ velocity all create ${Text} 1234
 
 neighbor 2.0 bin
 neigh_modify every 1 delay 0 check yes
+#minimize 1.0e-3 1.0e-4 100 1000
 
 timestep 2.0
 
@@ -73,13 +79,17 @@ variable xPress equal c_thermo_press[1]
 variable yPress equal c_thermo_press[2]
 variable zPress equal c_thermo_press[3]
 
+compute PE all pe pair kspace
+variable PE_Mol equal c_PE/v_nMolecules
+fix PEAve_Mol all ave/time ${Ne} ${Nr} ${Nf} v_PE_Mol
+
 # Evaluate and average surface tension in mN/m:
 variable st equal 0.5*lz*(v_zPress-0.5*(v_xPress+v_yPress))*${convFac}
 fix st all ave/time ${Ne} ${Nr} ${Nf} v_st
 
 variable xyArea equal lx*ly
 
-thermo_style custom step temp f_TAve press f_PAve v_xyArea lz f_st
+thermo_style custom step temp f_TAve press f_PAve f_PEAve_Mol v_xyArea lz f_st
 thermo_modify flush yes
 thermo ${Nf}
 
